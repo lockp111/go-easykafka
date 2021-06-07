@@ -57,6 +57,6 @@ func Test_Consumer(t *testing.T) {
 		time.Sleep(time.Second)
 	}()
 
-	consumer.Run()
+	consumer.Run(&ConsumHandler{})
 	<-timer.C
 }

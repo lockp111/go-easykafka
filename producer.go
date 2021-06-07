@@ -105,8 +105,8 @@ func (p *Producer) PublishString(topic, message string) error {
 	return nil
 }
 
-// PublishRaw ...
-func (p *Producer) PublishRaw(msg *sarama.ProducerMessage) error {
+// PublishRawMsg ...
+func (p *Producer) PublishRawMsg(msg *sarama.ProducerMessage) error {
 	if p.closed {
 		return ErrAlreadyClosed
 	}
