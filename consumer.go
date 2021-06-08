@@ -14,10 +14,10 @@ import (
 // Consumer ...
 type Consumer struct {
 	cg        sarama.ConsumerGroup
-	cancel    context.CancelFunc
 	client    sarama.Client
-	topics    []string
+	cancel    context.CancelFunc
 	group     string
+	Topics    []string
 	Reconnect time.Duration
 }
 
@@ -47,7 +47,7 @@ func NewConsumer(hosts, topics []string, groupName string, options ...Option) (*
 	}
 
 	return &Consumer{
-		topics:    topics,
+		Topics:    topics,
 		cg:        cg,
 		client:    client,
 		group:     groupName,
@@ -69,7 +69,7 @@ func (c *Consumer) Run(handler sarama.ConsumerGroupHandler) {
 		for {
 			if err := c.cg.Consume(
 				context.Background(),
-				c.topics,
+				c.Topics,
 				handler,
 			); err != nil && !errors.Is(err, io.EOF) {
 				log.Printf("kafka consume fail, error: %s\n", err.Error())
@@ -97,11 +97,17 @@ func (c *Consumer) DeleteGroup() error {
 	return admin.DeleteConsumerGroup(c.group)
 }
 
+func (c *Consumer) Group() string {
+	return c.group
+}
+
 // Close ...
-func (c *Consumer) Close() {
-	c.cancel()
-	c.cancel = nil
-	c.cg.Close()
+func (c *Consumer) Close() error {
+	if c.cancel != nil {
+		c.cancel()
+		c.cancel = nil
+	}
+	return c.cg.Close()
 }
 
 // ConsumHandler ...
