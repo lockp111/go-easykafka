@@ -1,28 +1,28 @@
 package easykafka
 
 import (
-	"fmt"
-	"log"
 	"time"
 
 	"github.com/IBM/sarama"
 )
 
+type AckFunc func(*sarama.ProducerMessage)
+type ErrFunc func(*sarama.ProducerError)
+
 // Producer ...
 type Producer struct {
-	ap     sarama.AsyncProducer
-	codec  Codec
-	closed bool
+	ap      sarama.AsyncProducer
+	codec   Codec
+	ackFunc AckFunc
+	errFunc ErrFunc
+	closed  bool
 }
 
 // NewProducer ...
 func NewProducer(hosts []string, options ...Option) (*Producer, error) {
 	cfg := sarama.NewConfig()
-	cfg.Producer.RequiredAcks = sarama.WaitForAll
-	cfg.Producer.Partitioner = sarama.NewRandomPartitioner
-	cfg.Producer.Return.Successes = true
+	cfg.Producer.Partitioner = sarama.NewRoundRobinPartitioner
 	cfg.Producer.Timeout = time.Microsecond * 100
-	cfg.Version = sarama.V2_8_2_0
 	for _, o := range options {
 		o(cfg)
 	}
@@ -32,29 +32,52 @@ func NewProducer(hosts []string, options ...Option) (*Producer, error) {
 		return nil, err
 	}
 
-	producer := &Producer{ap: p, codec: DefaultCodec}
-	go producer.run()
+	producer := &Producer{
+		ap:    p,
+		codec: DefaultCodec,
+	}
+	if cfg.Producer.Return.Errors || cfg.Producer.Return.Successes {
+		go producer.run()
+	}
 	return producer, nil
+}
+
+// GetAsyncProducer ...
+func (p *Producer) GetAsyncProducer() sarama.AsyncProducer {
+	return p.ap
+}
+
+// SetError ...
+func (p *Producer) SetError(errFunc ErrFunc) {
+	p.errFunc = errFunc
+}
+
+// SetSuccess ...
+func (p *Producer) SetSuccess(ackFunc AckFunc) {
+	p.ackFunc = ackFunc
 }
 
 // Run ...
 func (p *Producer) run() {
 	success := p.ap.Successes()
 	errors := p.ap.Errors()
-	defer fmt.Println("producer loop stop")
 
 	for {
 		select {
-		case _, ok := <-success:
+		case ack, ok := <-success:
 			if !ok {
 				return
+			}
+			if p.ackFunc != nil {
+				p.ackFunc(ack)
 			}
 		case err, ok := <-errors:
 			if !ok {
 				return
 			}
-
-			log.Printf("produce message fail, error: %s\n", err.Error())
+			if p.errFunc != nil {
+				p.errFunc(err)
+			}
 		}
 	}
 }
