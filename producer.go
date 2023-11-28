@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 )
 
 // Producer ...
@@ -22,7 +22,7 @@ func NewProducer(hosts []string, options ...Option) (*Producer, error) {
 	cfg.Producer.Partitioner = sarama.NewRandomPartitioner
 	cfg.Producer.Return.Successes = true
 	cfg.Producer.Timeout = time.Microsecond * 100
-	cfg.Version = sarama.V2_4_0_0
+	cfg.Version = sarama.V2_8_2_0
 	for _, o := range options {
 		o(cfg)
 	}

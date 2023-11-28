@@ -3,7 +3,7 @@ package easykafka
 import (
 	"errors"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 )
 
 // errors defined
